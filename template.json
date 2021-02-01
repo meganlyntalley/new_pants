@@ -113,7 +113,7 @@
               "Fn::GetAtt" : ["checkStockFunction", "Arn"]
             },
             "Id": "checkStockLambdaFunction",
-            "Input": '{   "sizeType": "Tall",   "size": "12",   "color": "Black" }'
+            "Input": "{ \"sizeType\": \"Tall\", \"size\": \"12\", \"color\": \"Black\" }"
           }
         ]
       }
