@@ -1,0 +1,10 @@
+checkStock/*
+!checkStock/requirements.txt
+!checkStock/lambda_function.py
+
+# idea files
+.idea/
+
+# aws sam files
+.aws-sam/
+samconfig.toml

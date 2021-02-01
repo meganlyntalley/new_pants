@@ -1,0 +1,135 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Transform": "AWS::Serverless-2016-10-31",
+  "Description": "Let's Check For New Pants!",
+  "Globals": {
+    "Function": {
+      "Timeout": 3,
+      "Tags": {
+        "STACK": "NewPants"
+      }
+    }
+  },
+  "Resources": {
+    "emailNotification": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "DisplayName": "New Pants Are In Stock",
+        "Subscription": [ {
+          "Endpoint": "contact@meganlyntalley.com",
+          "Protocol": "EMAIL"
+        } ],
+        "Tags" : [
+          {
+            "Key" : "STACK",
+            "Value" : "NewPants"
+          }
+        ],
+        "TopicName": "new-pants"
+      }
+    },
+    "newPantsEventBus": {
+      "Type": "AWS::Events::EventBus",
+      "Properties": {
+        "Name": "NewPantsEventBus"
+      }
+    },
+      "checkStockFunction": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "CodeUri": "checkStock/",
+        "Handler": "lambda_function.lambda_handler",
+        "Runtime": "python3.8",
+        "Policies": [
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Resource": "*",
+                "Action": [
+                    "events:PutEvents"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "NotificationEventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "EventRule",
+        "EventBusName" : "NewPantsEventBus",
+        "EventPattern": {
+          "source": [
+              "stock.info"
+          ],
+          "detail": {
+            "in_stock": [
+                "true"
+            ]
+          }
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Ref": "emailNotification"
+            },
+            "Id": "emailNotificationTarget"
+          }
+        ]
+      }
+    },
+    "NotificationRulePermissions": {
+      "Type": "AWS::SNS::TopicPolicy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [ {
+            "Sid": "SnsTopicPolicy",
+            "Effect": "Allow",
+            "Action": [ "sns:Publish" ],
+            "Principal": {
+              "Service": "events.amazonaws.com"
+            },
+            "Resource": [ {
+              "Ref": "emailNotification"
+            } ]
+          }]},
+        "Topics": [ {
+          "Ref": "emailNotification"
+        } ]
+      }
+    },
+    "ScheduleEventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "EventRule",
+        "ScheduleExpression": "cron(*/1 * * * ? *)",
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt" : ["checkStockFunction", "Arn"]
+            },
+            "Id": "checkStockLambdaFunction",
+            "Input": '{   "sizeType": "Tall",   "size": "12",   "color": "Black" }'
+          }
+        ]
+      }
+    },
+    "ScheduleEventPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [ "checkStockFunction", "Arn" ]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [ "ScheduleEventRule", "Arn" ]
+        }
+      }
+    }
+  }
+}
